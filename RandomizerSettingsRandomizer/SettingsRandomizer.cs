@@ -105,54 +105,49 @@ namespace SettingsRandomizer
             ItemChanger.Finder.Serialize("settings.txt", rb.gs);
         }
 
-        private static void OverwriteRandomizedSettings(GenerationSettings toModify, GenerationSettings orig)
+        private static void OverwriteRandomizedSettings(GenerationSettings randomized, GenerationSettings orig)
         {
-            List<string> config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"))
+            string[] config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"))
                 .Where(x => !string.IsNullOrEmpty(x))
-                .ToList();
+                .ToArray();
 
-            bool included = false;
-            if (config[0].StartsWith("INCLU"))
-            {
-                config.RemoveAt(0);
-                included = true;
-            }
-            else if (config[0].StartsWith("EXCLU"))
-            {
-                config.RemoveAt(0);
-            }
+            bool including = false;
 
-            if (included)
+            for (int i = 0; i < config.Length; i++)
             {
-                CopyGenerationSettings(toModify, orig, config);
-                orig.CopyTo(toModify);
-            }
-            else
-            {
-                CopyGenerationSettings(orig, toModify, config);
-            }
-        }
+                string configItem = config[i];
 
-        /// <summary>
-        /// Copy some generation settings fields from one instance to another according to config.
-        /// </summary>
-        /// <param name="from">The original settings.</param>
-        /// <param name="to">The target.</param>
-        /// <param name="config">A list of strings: 
-        /// "moduleName" to copy the settings module 
-        /// "moduleName.fieldName" to copy a single field
-        /// ".fieldName" to copy a field from an unspecified module</param>
-        private static void CopyGenerationSettings(GenerationSettings from, GenerationSettings to, List<string> config)
-        {
-            for (int i = 0; i < config.Count; i++)
-            {
-                string s = config[i];
-                if (s.StartsWith("."))
+                if (configItem.StartsWith("INCLU"))
                 {
-                    s = Util.GetPath(s.Remove(0, 1));
+                    including = true;
                 }
-                object value = from.Get(s);
-                to.Set(s, value);
+                else if (configItem.StartsWith("EXCLU"))
+                {
+                    including = false;
+                }
+                else
+                {
+                    if (configItem.StartsWith("."))
+                    {
+                        configItem = Util.GetPath(configItem.Remove(0, 1));
+                    }
+
+                    if (including)
+                    {
+                        object value = randomized.Get(configItem);
+                        orig.Set(configItem, value);
+                    }
+                    else
+                    {
+                        object value = orig.Get(configItem);
+                        randomized.Set(configItem, value);
+                    }
+                }
+
+                if (including)
+                {
+                    orig.CopyTo(randomized);
+                }
             }
         }
     }
