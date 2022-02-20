@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Modding;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -111,27 +112,15 @@ namespace SettingsRandomizer
 
         private static void OverwriteRandomizedSettings(GenerationSettings randomized, GenerationSettings orig)
         {
-            string[] config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"));
+            IEnumerable<string> config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"))
+                .Select(RemoveComments)
+                .Where(x => !string.IsNullOrEmpty(x));
 
             bool including = false;
 
-            for (int i = 0; i < config.Length; i++)
+            foreach (string s in config)
             {
-                string configItem = config[i];
-                if (configItem.Contains("#"))
-                {
-                    configItem = configItem.Substring(0, configItem.IndexOf("#"));
-                }
-                if (configItem.Contains("//"))
-                {
-                    configItem = configItem.Substring(0, configItem.IndexOf("//"));
-                }
-                configItem = configItem.TrimEnd();
-
-                if (string.IsNullOrEmpty(configItem))
-                {
-                    continue;
-                }
+                string configItem = s;
 
                 if (configItem.StartsWith("INCLU"))
                 {
@@ -159,12 +148,17 @@ namespace SettingsRandomizer
                         randomized.Set(configItem, value);
                     }
                 }
-
-                if (including)
-                {
-                    orig.CopyTo(randomized);
-                }
             }
+
+            if (including)
+            {
+                orig.CopyTo(randomized);
+            }
+        }
+
+        private static string RemoveComments(string orig)
+        {
+            return Regex.Replace(orig, @"(#|//).*", "").Trim();
         }
 
         private void ApplyCustomRandomization(GenerationSettings gs, Random rng)
