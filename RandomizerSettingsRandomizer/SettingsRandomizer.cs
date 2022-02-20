@@ -111,15 +111,27 @@ namespace SettingsRandomizer
 
         private static void OverwriteRandomizedSettings(GenerationSettings randomized, GenerationSettings orig)
         {
-            string[] config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"))
-                .Where(x => !string.IsNullOrEmpty(x) && !x.StartsWith("#") && !x.StartsWith("//"))
-                .ToArray();
+            string[] config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"));
 
             bool including = false;
 
             for (int i = 0; i < config.Length; i++)
             {
                 string configItem = config[i];
+                if (configItem.Contains("#"))
+                {
+                    configItem = configItem.Substring(0, configItem.IndexOf("#"));
+                }
+                if (configItem.Contains("//"))
+                {
+                    configItem = configItem.Substring(0, configItem.IndexOf("//"));
+                }
+                configItem = configItem.TrimEnd();
+
+                if (string.IsNullOrEmpty(configItem))
+                {
+                    continue;
+                }
 
                 if (configItem.StartsWith("INCLU"))
                 {
