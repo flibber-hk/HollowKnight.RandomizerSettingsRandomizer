@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Modding;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using RandomizerCore.Extensions;
 using RandomizerMod.RC;
 using RandomizerMod.Settings;
-using UnityEngine;
+using Random = System.Random;
 
 namespace SettingsRandomizer
 {
@@ -93,6 +95,8 @@ namespace SettingsRandomizer
             GenerationSettings orig = rb.gs.Clone() as GenerationSettings;
 
             rb.gs.Randomize(rb.rng);
+            ApplyCustomRandomization(rb.gs, rb.rng);
+            rb.gs.Clamp();
 
             if (CurrentChoice != FullSettingsRandomization)
             {
@@ -108,7 +112,7 @@ namespace SettingsRandomizer
         private static void OverwriteRandomizedSettings(GenerationSettings randomized, GenerationSettings orig)
         {
             string[] config = File.ReadAllLines(Path.Combine(ModDirectory, CurrentChoice + ".txt"))
-                .Where(x => !string.IsNullOrEmpty(x))
+                .Where(x => !string.IsNullOrEmpty(x) && !x.StartsWith("#") && !x.StartsWith("//"))
                 .ToArray();
 
             bool including = false;
@@ -148,6 +152,43 @@ namespace SettingsRandomizer
                 {
                     orig.CopyTo(randomized);
                 }
+            }
+        }
+
+        private void ApplyCustomRandomization(GenerationSettings gs, Random rng)
+        {
+            // Start item settings - start geo U(0, 50_000) is probably bad
+            int geo = rng.NextBool() ? 0 : (int)Math.Floor(rng.PowerLaw(4, 0, 5000));
+            gs.StartItemSettings.MinimumStartGeo = gs.StartItemSettings.MaximumStartGeo = geo;
+
+            // Cost randomization settings - custom clamp function so min==max doesn't have 50% chance
+            CostSettings cs = gs.CostSettings;
+            cs.Randomize(rng);
+
+            Swap(ref cs.MinimumCharmCost, ref cs.MaximumCharmCost);
+            Swap(ref cs.MinimumEggCost, ref cs.MaximumEggCost);
+            Swap(ref cs.MinimumEssenceCost, ref cs.MaximumEssenceCost);
+            Swap(ref cs.MinimumGrubCost, ref cs.MaximumGrubCost);
+            
+            // Progression depth settings - randomize float fields according to power law is probably best
+            ProgressionDepthSettings ps = gs.ProgressionDepthSettings;
+            foreach (FieldInfo fi in Util.GetOrderedFields(typeof(ProgressionDepthSettings)))
+            {
+                if (fi.FieldType == typeof(float))
+                {
+                    fi.SetValue(ps, Convert.ToSingle(rng.PowerLaw(2, 0, 10)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// If min > max, swap them
+        /// </summary>
+        private static void Swap<T>(ref T min, ref T max) where T : IComparable<T>
+        {
+            if (min.CompareTo(max) > 0)
+            {
+                (min, max) = (max, min);
             }
         }
     }
