@@ -33,6 +33,6 @@ SkipSettings
 ```
 will cause:
 * SkipSettings.DarkRooms to be randomized
-* PoolSettings.GeoRocks to be randomized (this line is unnecessary)
+* PoolSettings.GeoRocks to be randomized (this line is unnecessary, because the last INCLUDE/EXCLUDE is an EXCLUDE so settings are randomized by default).
 * The rest of the skip settings to be excluded (so they will default to the values from the menu)
 * The rest of the settings to be randomized.
