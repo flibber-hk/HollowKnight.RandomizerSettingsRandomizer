@@ -38,7 +38,7 @@ namespace SettingsRandomizer
         private void ConstructMenu(MenuPage landingPage)
         {
             SettingsRandoPage = new MenuPage(Localize("Randomize Settings"), landingPage);
-            SelectButton = new(SettingsRandoPage, "Settings Profile: ", SettingsRandomizer.FileNames);
+            SelectButton = new(SettingsRandoPage, "Settings Profile", SettingsRandomizer.FileNames);
             SelectButton.SetValue(SettingsRandomizer.CurrentChoice);
             SelectButton.ValueChanged += v => SettingsRandomizer.CurrentChoice = v;
 
