@@ -5,12 +5,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Modding;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using RandomizerCore.Extensions;
+using RandomizerMod.Logging;
 using RandomizerMod.RC;
 using RandomizerMod.Settings;
 using Random = System.Random;
+using static RandomizerMod.Localization;
 
 namespace SettingsRandomizer
 {
@@ -37,7 +37,12 @@ namespace SettingsRandomizer
         public const string NoSettingsRandomization = "Disabled";
         public const string FullSettingsRandomization = "Full";
         public static List<string> FileNames = new() { FullSettingsRandomization, NoSettingsRandomization };
-        
+
+        // Initialize after Randomizer loaded its LocalizationData
+        public override int LoadPriority()
+        {
+            return 10;
+        }
 
         public SettingsRandomizer() : base(null)
         {
@@ -54,8 +59,8 @@ namespace SettingsRandomizer
             Log("Initializing Mod...");
 
             MenuHolder.Hook();
-            RequestBuilder.OnUpdate.Subscribe(-10000f, RandomizeSettings);
-            RandomizerMod.Logging.SettingsLog.AfterLogSettings += AddSettingsToLog;
+            RequestBuilder.OnUpdate.Subscribe(-100_000f, RandomizeSettings);
+            SettingsLog.AfterLogSettings += AddSettingsToLog;
 
             DirectoryInfo main = new(ModDirectory);
             foreach (FileInfo f in main.EnumerateFiles("*.txt"))
@@ -81,16 +86,16 @@ namespace SettingsRandomizer
             }
         }
 
-        private static void AddSettingsToLog(RandomizerMod.Logging.LogArguments args, TextWriter tw)
+        private static void AddSettingsToLog(LogArguments args, TextWriter tw)
         {
-            tw.WriteLine($"Settings Randomization Profile: {CurrentChoice}");
+            string prefix = Localize("Settings Randomization Profile:");
+            string setting = Localize(CurrentChoice);
+            tw.WriteLine(prefix + " " + setting);
             tw.WriteLine();
         }
 
         private void RandomizeSettings(RequestBuilder rb)
         {
-            ItemChanger.Finder.Serialize("sa.txt", rb.gs);
-
             if (CurrentChoice == NoSettingsRandomization) return;
             int seed = rb.gs.Seed;
             GenerationSettings orig = rb.gs.Clone() as GenerationSettings;
@@ -106,8 +111,6 @@ namespace SettingsRandomizer
             }
 
             rb.gs.Seed = seed;
-
-            ItemChanger.Finder.Serialize("settings.txt", rb.gs);
         }
 
         private static void OverwriteRandomizedSettings(GenerationSettings randomized, GenerationSettings orig)
@@ -164,19 +167,34 @@ namespace SettingsRandomizer
         private void ApplyCustomRandomization(GenerationSettings gs, Random rng)
         {
             // Start item settings - start geo U(0, 50_000) is probably bad
-            int geo = rng.NextBool() ? 0 : (int)Math.Floor(rng.PowerLaw(4, 0, 5000));
+            // The median of the distribution is 64
+            int geo = rng.NextBool() ? 0 : (int)Math.Floor(rng.PowerLaw(2, 0, 4096));
             gs.StartItemSettings.MinimumStartGeo = gs.StartItemSettings.MaximumStartGeo = geo;
 
-            // Cost randomization settings - custom clamp function so min==max doesn't have 50% chance
+            // Cost randomization settings - custom clamp function; otherwise there's a 50% chance
+            // of Min = Max, which means all costs of that type are equal
             CostSettings cs = gs.CostSettings;
             cs.Randomize(rng);
 
-            Swap(ref cs.MinimumCharmCost, ref cs.MaximumCharmCost);
-            Swap(ref cs.MinimumEggCost, ref cs.MaximumEggCost);
-            Swap(ref cs.MinimumEssenceCost, ref cs.MaximumEssenceCost);
-            Swap(ref cs.MinimumGrubCost, ref cs.MaximumGrubCost);
+            if (cs.MinimumCharmCost > cs.MaximumCharmCost)
+            {
+                (cs.MinimumCharmCost, cs.MaximumCharmCost) = (cs.MaximumCharmCost, cs.MinimumCharmCost);
+            }
+            if (cs.MinimumEggCost > cs.MaximumEggCost)
+            {
+                (cs.MinimumEggCost, cs.MaximumEggCost) = (cs.MaximumEggCost, cs.MinimumEggCost);
+            }
+            if (cs.MinimumEssenceCost > cs.MaximumEssenceCost)
+            {
+                (cs.MinimumEssenceCost, cs.MaximumEssenceCost) = (cs.MaximumEssenceCost, cs.MinimumEssenceCost);
+            }
+            if (cs.MinimumGrubCost > cs.MaximumGrubCost)
+            {
+                (cs.MinimumGrubCost, cs.MaximumGrubCost) = (cs.MaximumGrubCost, cs.MinimumGrubCost);
+            }
             
-            // Progression depth settings - randomize float fields according to power law is probably best
+            // Progression depth settings - randomize float fields according to power law is probably best;
+            // That way it's more likely to be lower than higher
             ProgressionDepthSettings ps = gs.ProgressionDepthSettings;
             foreach (FieldInfo fi in Util.GetOrderedFields(typeof(ProgressionDepthSettings)))
             {
@@ -184,17 +202,6 @@ namespace SettingsRandomizer
                 {
                     fi.SetValue(ps, Convert.ToSingle(rng.PowerLaw(2, 0, 10)));
                 }
-            }
-        }
-
-        /// <summary>
-        /// If min > max, swap them
-        /// </summary>
-        private static void Swap<T>(ref T min, ref T max) where T : IComparable<T>
-        {
-            if (min.CompareTo(max) > 0)
-            {
-                (min, max) = (max, min);
             }
         }
     }
