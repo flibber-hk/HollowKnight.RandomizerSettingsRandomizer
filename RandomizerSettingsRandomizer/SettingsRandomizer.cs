@@ -5,6 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Modding;
+using MonoMod.RuntimeDetour;
+using Newtonsoft.Json;
 using RandomizerCore.Extensions;
 using RandomizerMod.Logging;
 using RandomizerMod.RC;
@@ -53,13 +55,25 @@ namespace SettingsRandomizer
         {
             return GetType().Assembly.GetName().Version.ToString();
         }
-        
+
+        private static MethodInfo RandoControllerRun = typeof(RandoController).GetMethod(nameof(RandoController.Run));
+        private Hook _hook;
+
         public override void Initialize()
         {
             Log("Initializing Mod...");
 
             MenuHolder.Hook();
-            RequestBuilder.OnUpdate.Subscribe(-100_000f, RandomizeSettings);
+
+            // RequestBuilder.OnUpdate.Subscribe(-100_000f, RandomizeSettings);
+            RequestBuilder.OnUpdate.Subscribe(-100_000f, AddSettingsExceptionLogger);
+            _hook = new Hook(RandoControllerRun, (Action<RandoController> orig, RandoController self) =>
+            {
+                RandomizeSettings(self.gs, self.rng);
+                orig(self);
+            });
+
+
             SettingsLog.AfterLogSettings += AddSettingsToLog;
 
             DirectoryInfo main = new(ModDirectory);
@@ -96,21 +110,40 @@ namespace SettingsRandomizer
 
         private void RandomizeSettings(RequestBuilder rb)
         {
-            if (CurrentChoice == NoSettingsRandomization) return;
-            int seed = rb.gs.Seed;
-            GenerationSettings orig = rb.gs.Clone() as GenerationSettings;
+            RandomizeSettings(rb.gs, rb.rng);
+        }
 
-            rb.gs.Randomize(rb.rng);
-            ApplyCustomRandomization(rb.gs, rb.rng);
-            rb.gs.Clamp();
+        private void AddSettingsExceptionLogger(RequestBuilder rb)
+        {
+            if (CurrentChoice == NoSettingsRandomization) return;
+
+            // Log settings if there's an exception, because weird settings are probably the reason
+            void dumpSettings(Exception e)
+            {
+                Log("Settings:\n");
+                Log(JsonConvert.SerializeObject(rb.gs, Formatting.Indented));
+                rb.rm.OnError -= dumpSettings;
+            }
+            rb.rm.OnError += dumpSettings;
+        }
+
+        private void RandomizeSettings(GenerationSettings gs, Random rng)
+        {
+            if (CurrentChoice == NoSettingsRandomization) return;
+            int seed = gs.Seed;
+            GenerationSettings orig = gs.Clone() as GenerationSettings;
+
+            gs.Randomize(rng);
+            ApplyCustomRandomization(gs, rng);
+            gs.Clamp();
 
             if (CurrentChoice != FullSettingsRandomization)
             {
-                OverwriteRandomizedSettings(rb.gs, orig);
-                rb.gs.Clamp();
+                OverwriteRandomizedSettings(gs, orig);
+                gs.Clamp();
             }
 
-            rb.gs.Seed = seed;
+            gs.Seed = seed;
         }
 
         private static void OverwriteRandomizedSettings(GenerationSettings randomized, GenerationSettings orig)
@@ -192,7 +225,10 @@ namespace SettingsRandomizer
             {
                 (cs.MinimumGrubCost, cs.MaximumGrubCost) = (cs.MaximumGrubCost, cs.MinimumGrubCost);
             }
-            
+
+            // Curse settings - grubs replaced by mimics should be between 0 and 46, say
+            gs.CursedSettings.MaximumGrubsReplacedByMimics = rng.Next(0, 46);
+
             // Progression depth settings - randomize float fields according to power law is probably best;
             // That way it's more likely to be lower than higher
             ProgressionDepthSettings ps = gs.ProgressionDepthSettings;
