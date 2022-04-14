@@ -41,6 +41,7 @@ namespace SettingsRandomizer
             SelectButton = new(SettingsRandoPage, "Settings Profile", SettingsRandomizer.FileNames);
             SelectButton.SetValue(SettingsRandomizer.CurrentChoice);
             SelectButton.ValueChanged += v => SettingsRandomizer.CurrentChoice = v;
+            SettingsRandoPage.AddToNavigationControl(SelectButton);
 
             Localize(SelectButton);
         }
