@@ -239,6 +239,37 @@ namespace SettingsRandomizer
                     fi.SetValue(ps, Convert.ToSingle(rng.PowerLaw(2, 0, 10)));
                 }
             }
+
+            // Skills should be randomized if split
+            if (gs.NoveltySettings.SplitClaw
+                || gs.NoveltySettings.SplitCloak
+                || gs.NoveltySettings.SplitSuperdash)
+            {
+                gs.PoolSettings.Skills = true;
+            }
+
+            // Skills, keys, stags and charms should be randomized if start items
+            StartItemSettings ss = gs.StartItemSettings;
+            if (ss.HorizontalMovement != StartItemSettings.StartHorizontalType.None)
+            {
+                gs.PoolSettings.Skills = true;
+            }
+            if (ss.VerticalMovement != StartItemSettings.StartVerticalType.None)
+            {
+                gs.PoolSettings.Skills = true;
+            }
+            if (ss.Charms != StartItemSettings.StartCharmType.None)
+            {
+                gs.PoolSettings.Charms = true;
+            }
+            if (ss.Stags != StartItemSettings.StartStagType.None)
+            {
+                gs.PoolSettings.Stags = true;
+            }
+            if (!gs.PoolSettings.Skills || !gs.PoolSettings.Keys)
+            {
+                ss.MiscItems = StartItemSettings.StartMiscItems.None;
+            }
         }
     }
 }
