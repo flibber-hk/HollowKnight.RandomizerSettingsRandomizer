@@ -21,6 +21,8 @@ namespace SettingsRandomizer
         public class GlobalSettings
         {
             public string CurrentChoice = NoSettingsRandomization;
+
+            public bool IsEnabled() => CurrentChoice != NoSettingsRandomization;
         }
 
         public static GlobalSettings GS = new();

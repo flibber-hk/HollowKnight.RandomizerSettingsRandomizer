@@ -31,8 +31,18 @@ namespace SettingsRandomizer
         {
             JumpButton = new(landingPage, Localize("Randomize Settings"));
             JumpButton.AddHideAndShowEvent(landingPage, SettingsRandoPage);
+            SetTopLevelButtonColour();
+
             button = JumpButton;
             return true;
+        }
+
+        private void SetTopLevelButtonColour()
+        {
+            if (JumpButton != null)
+            {
+                JumpButton.Text.color = SettingsRandomizer.GS.IsEnabled() ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
+            }
         }
 
         private void ConstructMenu(MenuPage landingPage)
@@ -40,7 +50,11 @@ namespace SettingsRandomizer
             SettingsRandoPage = new MenuPage(Localize("Randomize Settings"), landingPage);
             SelectButton = new(SettingsRandoPage, "Settings Profile", SettingsRandomizer.FileNames);
             SelectButton.SetValue(SettingsRandomizer.CurrentChoice);
+
+            // Have to subscribe in this order
             SelectButton.ValueChanged += v => SettingsRandomizer.CurrentChoice = v;
+            SelectButton.ValueChanged += v => SetTopLevelButtonColour();
+
             SettingsRandoPage.AddToNavigationControl(SelectButton);
 
             Localize(SelectButton);
