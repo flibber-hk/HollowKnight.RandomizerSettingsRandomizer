@@ -70,7 +70,7 @@ namespace SettingsRandomizer
         public override bool TryProvideSettings(out RandoSettingsManagerData settings)
         {
             settings = RandoSettingsManagerData.Create();
-            return true;
+            return SettingsRandomizer.GS.IsEnabled();
         }
     }
 }
