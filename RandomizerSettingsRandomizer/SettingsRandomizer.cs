@@ -23,6 +23,7 @@ namespace SettingsRandomizer
             public string CurrentChoice = NoSettingsRandomization;
 
             public bool IsEnabled() => CurrentChoice != NoSettingsRandomization;
+            public bool IsFromFile() => CurrentChoice != NoSettingsRandomization && CurrentChoice != FullSettingsRandomization;
         }
 
         public static GlobalSettings GS = new();
@@ -99,6 +100,11 @@ namespace SettingsRandomizer
             if (!FileNames.Contains(CurrentChoice))
             {
                 CurrentChoice = NoSettingsRandomization;
+            }
+
+            if (ModHooks.GetMod("RandoSettingsManager") is not null)
+            {
+                RandoSettingsManagerInterop.Hook();
             }
         }
 
