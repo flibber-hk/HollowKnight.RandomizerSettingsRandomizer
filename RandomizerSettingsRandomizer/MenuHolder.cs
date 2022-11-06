@@ -12,28 +12,22 @@ namespace SettingsRandomizer
 
         internal SmallButton JumpButton;
         internal MenuItem<string> SelectButton;
-
-        private static MenuHolder _instance = null;
-        internal static MenuHolder Instance => _instance ?? (_instance = new MenuHolder());
+        internal static MenuHolder Instance { get; private set; }
 
         public static void OnExitMenu()
         {
-            _instance = null;
+            Instance = null;
         }
 
         public static void Hook()
         {
-            RandomizerMenuAPI.AddMenuPage(Instance.ConstructMenu, Instance.HandleButton);
+            RandomizerMenuAPI.AddMenuPage(ConstructMenu, HandleButton);
             MenuChangerMod.OnExitMainMenu += OnExitMenu;
         }
 
-        private bool HandleButton(MenuPage landingPage, out SmallButton button)
+        private static bool HandleButton(MenuPage landingPage, out SmallButton button)
         {
-            JumpButton = new(landingPage, Localize("Randomize Settings"));
-            JumpButton.AddHideAndShowEvent(landingPage, SettingsRandoPage);
-            SetTopLevelButtonColour();
-
-            button = JumpButton;
+            button = Instance.JumpButton;
             return true;
         }
 
@@ -45,7 +39,9 @@ namespace SettingsRandomizer
             }
         }
 
-        private void ConstructMenu(MenuPage landingPage)
+        private static void ConstructMenu(MenuPage landingPage) => Instance = new(landingPage);
+
+        private MenuHolder(MenuPage landingPage)
         {
             SettingsRandoPage = new MenuPage(Localize("Randomize Settings"), landingPage);
             SelectButton = new(SettingsRandoPage, "Settings Profile", SettingsRandomizer.FileNames);
@@ -58,6 +54,10 @@ namespace SettingsRandomizer
             SettingsRandoPage.AddToNavigationControl(SelectButton);
 
             Localize(SelectButton);
+
+            JumpButton = new(landingPage, Localize("Randomize Settings"));
+            JumpButton.AddHideAndShowEvent(landingPage, SettingsRandoPage);
+            SetTopLevelButtonColour();
         }
     }
 }
