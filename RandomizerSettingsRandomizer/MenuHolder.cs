@@ -31,11 +31,15 @@ namespace SettingsRandomizer
             return true;
         }
 
-        private void SetTopLevelButtonColour()
+        private void SetButtonColours()
         {
             if (JumpButton != null)
             {
                 JumpButton.Text.color = SettingsRandomizer.GS.IsEnabled() ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
+            }
+            if (SelectButton != null)
+            {
+                SelectButton.Text.color = SettingsRandomizer.GS.IsEnabled() ? Colors.TRUE_COLOR : Colors.FALSE_COLOR;
             }
         }
 
@@ -49,7 +53,7 @@ namespace SettingsRandomizer
 
             // Have to subscribe in this order
             SelectButton.ValueChanged += v => SettingsRandomizer.CurrentChoice = v;
-            SelectButton.ValueChanged += v => SetTopLevelButtonColour();
+            SelectButton.ValueChanged += v => SetButtonColours();
 
             SettingsRandoPage.AddToNavigationControl(SelectButton);
 
@@ -57,7 +61,7 @@ namespace SettingsRandomizer
 
             JumpButton = new(landingPage, Localize("Randomize Settings"));
             JumpButton.AddHideAndShowEvent(landingPage, SettingsRandoPage);
-            SetTopLevelButtonColour();
+            SetButtonColours();
         }
     }
 }
